@@ -1,0 +1,52 @@
+[
+  {
+    "nombre": "Unidades del proveedor (mm y g)",
+    "esperado": "convertido",
+    "entrada": {
+      "sku_id": "SKU-10231",
+      "descripcion": "Galletitas dulces de chocolate 350 g",
+      "subcategoria": "snacks",
+      "texto_proveedor": "Buenas tardes, paso los datos logísticos del nuevo ítem: galletitas dulces chocolate x 350 grs. Medidas de la caja: 210 x 60 x 45 mm. Peso neto 350 g."
+    }
+  },
+  {
+    "nombre": "Datos ya en cm y kg",
+    "esperado": "ok",
+    "entrada": {
+      "sku_id": "SKU-10232",
+      "descripcion": "Agua mineral sin gas 1,5 L",
+      "subcategoria": "bebidas",
+      "texto_proveedor": "Agua mineral 1,5 L. Botella: alto 31 cm, largo 9 cm, ancho 9 cm. Peso unitario 1,55 kg."
+    }
+  },
+  {
+    "nombre": "Pack (6x70 g)",
+    "esperado": "convertido",
+    "entrada": {
+      "sku_id": "SKU-10233",
+      "descripcion": "Papas fritas clásicas pack 6x70 g",
+      "subcategoria": "snacks",
+      "texto_proveedor": "Pack 6x70g papas clásicas. Bolsa contenedora 30 x 22 x 8 cm."
+    }
+  },
+  {
+    "nombre": "Confusa (sin unidad de peso)",
+    "esperado": "revisar",
+    "entrada": {
+      "sku_id": "SKU-10234",
+      "descripcion": "Bife de chorizo envasado al vacío",
+      "subcategoria": "carnes",
+      "texto_proveedor": "bife chorizo al vacio aprox 500, bandeja 20x15x4. el peso varia segun la pieza"
+    }
+  },
+  {
+    "nombre": "Fuera de tema",
+    "esperado": "fuera_de_tema",
+    "entrada": {
+      "sku_id": "SKU-10235",
+      "descripcion": "Detergente lavavajillas limón 750 ml",
+      "subcategoria": "limpieza",
+      "texto_proveedor": "Hola, les confirmo que el camión con la mercadería llega el jueves a las 9 al centro de distribución. Saludos."
+    }
+  }
+]
