@@ -10,6 +10,7 @@ existan en el contexto (grounding) → un reintento con el error → resultado c
 import argparse
 import json
 import os
+import random
 import re
 import unicodedata
 import sys
@@ -49,9 +50,32 @@ TEMAS_ROL = {
     "supervisor": "medidas y peso, altas de SKU, recepción, frío, transferencias, despacho y mermas",
     "gerencia": "medidas y altas de SKU, toda la operación del CD, mermas, costos del operador y condiciones comerciales",
 }
-SALUDOS = re.compile(r"^(hola+|buenas?( tardes| noches| dias)?|buen dia|hey|holi|que tal|como (estas|va|andas)|"
-                     r"gracias|muchas gracias|genial|perfecto|ok|dale|chau|adios|nos vemos)( jopi)?$")
-AYUDA = re.compile(r"(con )?(que|en que) (me )?(podes|puedes|sabes) (ayudar|hacer)|quien sos|que sabes|que haces|ayuda$")
+SUGERENCIAS_ROL = {
+    "operario": ["El proveedor mandó 6x70g, ¿qué peso cargo?", "¿A qué temperatura recibo congelados?", "¿Cómo mido un producto?"],
+    "supervisor": ["¿Quién aprueba el alta de un SKU?", "¿Cuándo apruebo una merma?", "¿Qué hago si la tienda reclama un faltante?"],
+    "gerencia": ["¿Cómo es el alta de un SKU?", "¿Qué pasa si un proveedor informa mal las medidas?", "¿Cuál es la meta de costo por línea?"],
+}
+INTENCIONES = [
+    ("como_estas", re.compile(r"^(hola |buenas |buen dia )?(como (estas|andas|va|te va|anda todo|andamos)|todo bien|que tal|que onda|como va)( todo)?( bien)?$")),
+    ("saludo", re.compile(r"^(hola+|holis|holi|buenas?( tardes| noches| dias)?|buen dia|hey|ey)( jopi)?$")),
+    ("gracias", re.compile(r"^(gracias|muchas gracias|mil gracias|genial|perfecto|ok|okey|dale|buenisimo|joya|barbaro)( jopi)?$")),
+    ("chau", re.compile(r"^(chau|chao|adios|nos vemos|hasta luego|me voy)( jopi)?$")),
+    ("quien", re.compile(r"(quien sos|que sos|como te llamas|presentate)")),
+    ("ayuda", re.compile(r"(con )?(que|en que) (me )?(podes|puedes|sabes) (ayudar|hacer)|que sabes|que haces|^ayuda$")),
+]
+FRASES = {
+    "saludo": ["¡Holaaa{n}! 👋 Acá JOPI, con el mate recién cebado. ¿En qué te doy una mano hoy?",
+               "¡Buenas{n}! ¿Qué andamos necesitando? Medidas, recepción, altas… tirame lo que sea.",
+               "¡Hola, hola{n}! Lista para arrancar. ¿Qué duda tenés?"],
+    "como_estas": ["¡Re bien{n}! Acá con buena música de fondo y las góndolas ordenadas 🎶 ¿Y vos? ¿En qué te ayudo?",
+                   "¡De diez{n}! Ya me tomé dos mates y ningún proveedor llegó sin turno… por ahora 😅 ¿Qué necesitás?",
+                   "¡Todo joya{n}! ¿Vos cómo venís? Contame qué estás resolviendo."],
+    "gracias": ["¡De nada{n}! Para eso estoy 💛 ¿Te ayudo con algo más?",
+                "¡Un placer{n}! Si surge otra duda, acá ando.",
+                "¡Joya! ¿Seguimos con otra o te dejo laburar tranquilo{n}?"],
+    "chau": ["¡Chau chau{n}! Que las góndolas te acompañen 👋", "¡Nos vemos{n}! Cualquier cosa, ya sabés dónde encontrarme 🧉"],
+    "quien": ["Soy JOPI, la gerenta de Retail más chiquita y con más energía 👓 Me sé los procedimientos de memoria. ¿Qué querés saber{n}?"],
+}
 
 
 def _normal(texto: str) -> str:
@@ -60,19 +84,18 @@ def _normal(texto: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", " ", t)).strip()
 
 
-def charla_rapida(texto: str, rol: str):
-    """Saludos y "¿con qué me ayudás?" se responden al instante, sin buscar ni llamar al LLM (0 tokens)."""
-    t = _normal(texto)
+def charla_rapida(texto: str, rol: str, nombre: Optional[str] = None):
+    """Saludos, "¿cómo andás?", gracias y "¿con qué me ayudás?" se responden al instante, sin LLM (0 tokens).
+    Devuelve (respuesta, sugerencias) o None si es una pregunta de verdad."""
+    t = re.sub(r"\s+", " ", re.sub(r"\bjopi\b", " ", _normal(texto))).strip()  # "hola jopi todo bien" = "hola todo bien"
+    n = f", {nombre}" if nombre else ""
     temas = TEMAS_ROL.get(rol, "los procedimientos")
-    if SALUDOS.match(t):
-        if t.startswith(("gracias", "muchas gracias", "genial", "perfecto", "ok", "dale")):
-            return "¡De nada! Para eso estoy 💛 Si te surge otra duda, acá ando con el mate."
-        if t.startswith(("chau", "adios", "nos vemos")):
-            return "¡Chau chau! Que las góndolas te acompañen 👋"
-        return f"¡Holaaa! Acá JOPI 👓 Preguntame lo que necesites sobre {temas}."
-    if AYUDA.search(t):
-        return (f"¡Me encanta esa pregunta! Te puedo ayudar con {temas}. "
-                "Probá con algo como «El proveedor mandó 6x70g, ¿qué peso cargo?» o «¿A qué temperatura recibo congelados?».")
+    sug = SUGERENCIAS_ROL.get(rol, [])
+    for intencion, patron in INTENCIONES:
+        if patron.search(t):
+            if intencion == "ayuda":
+                return (f"¡Me encanta esa pregunta{n}! Te ayudo con {temas}. Elegí una de abajo o preguntame con tus palabras 👇", sug)
+            return random.choice(FRASES[intencion]).format(n=n), (sug if intencion != "chau" else [])
     return None
 
 
@@ -88,7 +111,8 @@ class MockRAG(ProveedorLLM):
         else:
             primero = prompt.split("[C1]", 1)[1].split("[C2]", 1)[0].strip()
             r = {"respuesta": "¡JOPI en modo demo (sin LLM)! Según el procedimiento: " + primero[:600],
-                 "fuentes": ["C1"], "confianza": "media", "derivar_a_humano": False, "motivo_derivacion": None}
+                 "fuentes": ["C1"], "confianza": "media", "derivar_a_humano": False, "motivo_derivacion": None,
+                 "sugerencias": ["¿Y si el producto es congelado?", "¿Cómo lo mido físicamente?"]}
         return RespuestaLLM(json.dumps(r, ensure_ascii=False), len(prompt) // 4, 120)
 
 
@@ -106,22 +130,28 @@ class Asistente:
         self.plantilla = (PROMPTS / "rag_usuario.md").read_text(encoding="utf-8")
         self.correccion = (PROMPTS / "rag_correccion.md").read_text(encoding="utf-8")
 
-    def responder(self, rol: str, texto: str) -> Resultado:
+    def responder(self, rol: str, texto: str, historial: Optional[List[dict]] = None,
+                  nombre: Optional[str] = None) -> Resultado:
         inicio = time.perf_counter()
         try:
-            p = Pregunta(rol=rol, texto=texto)
+            limpio = [{"quien": t.get("quien"), "texto": str(t.get("texto", ""))[:600]}
+                      for t in (historial or [])[-6:] if isinstance(t, dict) and str(t.get("texto", "")).strip()]
+            p = Pregunta(rol=rol, texto=texto, historial=limpio, nombre=nombre or None)
         except ValidationError as e:
             campos = [".".join(map(str, x["loc"])) for x in e.errors(include_input=False)]
             return Resultado(ok=False, error={"codigo": "ENTRADA_INVALIDA", "campos": campos})
 
         ms = lambda: round((time.perf_counter() - inicio) * 1000)
-        rapida = charla_rapida(p.texto, p.rol.value)
+        rapida = charla_rapida(p.texto, p.rol.value, p.nombre)
         if rapida:
-            return Resultado(ok=True, respuesta=rapida, confianza="alta", metricas=Metricas(
+            return Resultado(ok=True, respuesta=rapida[0], sugerencias=rapida[1], confianza="alta", metricas=Metricas(
                 modelo="sin LLM", intentos=0, input_tokens=0, output_tokens=0, costo_usd=0,
                 latencia_ms=ms(), fragmentos_recuperados=0))
 
-        encontrados = self.indice.buscar(p.texto, p.rol, self.k)
+        # Para repreguntas cortas ("¿y si es congelado?") se busca también con la pregunta anterior del usuario
+        previas = [t.texto for t in p.historial if t.quien == "usuario"]
+        consulta = f"{previas[-1]} {p.texto}" if previas and len(p.texto.split()) <= 8 else p.texto
+        encontrados = self.indice.buscar(consulta, p.rol, self.k)
         ids = {f"C{n}": e.chunk for n, e in enumerate(encontrados, 1)}
 
         if not encontrados:  # el rol no ve ningún documento: no se gasta un token
@@ -131,7 +161,9 @@ class Asistente:
                              input_tokens=0, output_tokens=0, costo_usd=0, latencia_ms=ms(), fragmentos_recuperados=0))
 
         contexto = "\n\n".join(f"[{cid}] {c.texto}" for cid, c in ids.items())
-        mensajes = [{"role": "user", "content": self.plantilla.format(rol=p.rol.value, contexto=contexto, pregunta=p.texto)}]
+        charla = "\n".join(f"{'Usuario' if t.quien == 'usuario' else 'JOPI'}: {t.texto}" for t in p.historial) or "(es el primer mensaje)"
+        mensajes = [{"role": "user", "content": self.plantilla.format(
+            rol=p.rol.value, nombre=p.nombre or "(no lo dijo)", historial=charla, contexto=contexto, pregunta=p.texto)}]
         tin = tout = 0
         error = None
         for intento in range(1, MAX_INTENTOS + 1):
@@ -156,6 +188,7 @@ class Asistente:
                 fuentes.append(Fuente(documento=c.documento, titulo=c.titulo, seccion=c.seccion))
             return Resultado(ok=True, respuesta=salida.respuesta, fuentes=fuentes, confianza=salida.confianza,
                              derivar_a_humano=salida.derivar_a_humano, motivo_derivacion=salida.motivo_derivacion,
+                             sugerencias=salida.sugerencias,
                              metricas=Metricas(modelo=self.proveedor.modelo, intentos=intento, input_tokens=tin,
                                                output_tokens=tout, costo_usd=_costo(self.proveedor.modelo, tin, tout),
                                                latencia_ms=ms(), fragmentos_recuperados=len(encontrados)))

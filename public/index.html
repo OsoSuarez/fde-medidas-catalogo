@@ -25,6 +25,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding-top
 .jopi.habla .boca{animation:charla .45s ease-in-out infinite}@keyframes charla{50%{transform:scaleY(.55)}}
 .jopi.habla .brazo{animation:saludo 1.8s ease-in-out infinite}
 .jopi.grande{animation:rebote 3s ease-in-out infinite}@keyframes rebote{50%{transform:translateY(-4px)}}
+.sugerencias{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.sugerencias button{font:inherit;font-size:13px;background:var(--amber-s);color:var(--ink);border:1px solid transparent;border-radius:999px;padding:5px 11px;cursor:pointer;text-align:left}.sugerencias button:hover{border-color:var(--amber)}
 .ficha{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:-4px 0 16px}.ficha span{font-size:12.5px;background:var(--amber-s);border-radius:999px;padding:4px 10px}
 .salir{background:none;border:0;color:var(--muted);cursor:pointer;font:inherit;font-size:12.5px;text-decoration:underline}
 /* JOPI */
@@ -163,8 +164,16 @@ const JOPI_SVG = `<svg class="pali jopi" viewBox="0 0 80 80" role="img" aria-lab
 const avatar = () => JOPI_SVG;
 document.querySelectorAll(".slot-jopi").forEach(el => { el.outerHTML = JOPI_SVG.replace('class="pali jopi"', 'class="pali jopi ' + el.className.replace("slot-jopi", "") + '"'); });
 
+// Memoria de la charla (últimos 6 mensajes) y nombre de la persona (se guarda en este navegador)
+let historial = [];
+let nombre = "";
+try { nombre = localStorage.getItem("jopi_nombre") || ""; } catch (e) {}
+let esperandoNombre = false;
+function recordar(quien, texto) { historial.push({quien, texto: String(texto).slice(0, 600)}); historial = historial.slice(-6); }
+
 async function llamar(pregunta) {
-  const r = await fetch("/api/chat", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({pregunta})});
+  const r = await fetch("/api/chat", {method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({pregunta, historial: historial.slice(-6), nombre})});
   let datos = {};
   try { datos = await r.json(); } catch (e) { datos = {ok: false, error: {mensaje: "Respuesta inválida del servidor."}}; }
   return {status: r.status, datos};
@@ -177,13 +186,41 @@ async function iniciar() {
 }
 
 function mostrarApp(rol) {
-  $("ejemplos").innerHTML = "";
+  $("ejemplos").innerHTML = ""; $("ejemplos").dataset.rol = rol;
   (EJEMPLOS[rol] || []).forEach(t => {
     const b = document.createElement("button"); b.textContent = t;
     b.onclick = () => { $("pregunta").value = t; enviar(); };
     $("ejemplos").appendChild(b);
   });
-  if (!$("chat").children.length) burbuja("bot", "¡Hola, hola! Acá JOPI, lista para resolver dudas 👓 Te ayudo con " + (TEMAS[rol] || "los procedimientos") + ". ¿Qué necesitás?");
+  if (!$("chat").children.length) {
+    if (nombre) {
+      burbuja("bot", "¡" + nombre + "! ¡Qué bueno verte de nuevo! 💛 ¿En qué te doy una mano hoy?");
+    } else {
+      burbuja("bot", "¡Hola, hola! Acá JOPI 👓 Te ayudo con " + (TEMAS[rol] || "los procedimientos") + ". Antes que nada… ¿cómo te llamás?");
+      esperandoNombre = true;
+    }
+  }
+}
+
+// Botones con preguntas de seguimiento debajo de una respuesta
+function chipsSugerencias(contenedor, lista) {
+  if (!lista || !lista.length) return;
+  const d = document.createElement("div"); d.className = "sugerencias";
+  lista.slice(0, 3).forEach(t => {
+    const b = document.createElement("button"); b.textContent = t;
+    b.onclick = () => { d.remove(); $("pregunta").value = t; enviar(); };
+    d.appendChild(b);
+  });
+  contenedor.appendChild(d);
+}
+
+// "Me llamo Ana", "soy Ana" o directamente "Ana" cuando JOPI pregunta el nombre
+function detectarNombre(texto) {
+  const t = texto.trim().replace(/[.!¡]+$/g, "");
+  let m = t.match(/^(?:me llamo|soy|mi nombre es)\s+([A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)/i);
+  if (m) return m[1];
+  if (esperandoNombre && /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{2,20}( [A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{2,20})?$/.test(t)) return t.split(" ")[0];
+  return "";
 }
 
 function burbuja(quien, texto) {
@@ -198,8 +235,23 @@ function burbuja(quien, texto) {
 async function enviar() {
   const texto = $("pregunta").value.trim();
   if (!texto) return;
-  $("pregunta").value = ""; $("enviar").disabled = true;
+  $("pregunta").value = "";
   burbuja("yo", texto);
+  document.querySelectorAll(".sugerencias").forEach(d => d.remove());
+
+  const posible = detectarNombre(texto);
+  if (posible) {  // respuesta local, sin gastar tokens
+    nombre = posible.charAt(0).toUpperCase() + posible.slice(1).toLowerCase();
+    try { localStorage.setItem("jopi_nombre", nombre); } catch (e) {}
+    esperandoNombre = false;
+    const saludo = "¡Un gusto, " + nombre + "! 💛 Ya te agendé. Contame, ¿qué estás resolviendo hoy?";
+    const {msg} = burbuja("bot", saludo); hablar(saludo);
+    chipsSugerencias(msg, EJEMPLOS[$("ejemplos").dataset.rol] || []);
+    recordar("usuario", texto); recordar("jopi", saludo);
+    return;
+  }
+  esperandoNombre = false;
+  $("enviar").disabled = true;
   const {linea, msg} = burbuja("bot", "");
   const pali = linea.querySelector(".pali"); pali.classList.add("habla", "piensa");
   msg.innerHTML = '<span class="puntos"><b></b><b></b><b></b></span>';
@@ -209,6 +261,7 @@ async function enviar() {
     if (!datos.ok) { msg.textContent = "¡Uy! Se me cayó el mate encima del teclado 😵 (" + ((datos.error && (datos.error.mensaje || datos.error.codigo)) || "error") + ")"; return; }
     msg.textContent = datos.respuesta;
     hablar(datos.respuesta);
+    recordar("usuario", texto); recordar("jopi", datos.respuesta);
     if (datos.derivar_a_humano) {
       const w = document.createElement("div"); w.className = "deriva";
       w.textContent = "👉 Esto mejor charlalo con tu supervisor" + (datos.motivo_derivacion ? ": " + datos.motivo_derivacion : ".");
@@ -217,6 +270,7 @@ async function enviar() {
     const m = document.createElement("div"); m.className = "meta";
     (datos.fuentes || []).forEach(f => { const c = document.createElement("span"); c.className = "chip"; c.textContent = "📄 " + f.titulo + " › " + f.seccion; m.appendChild(c); });
     if (m.children.length) msg.appendChild(m);
+    chipsSugerencias(msg, datos.sugerencias);
   } catch (e) { msg.textContent = "No me puedo conectar al servidor."; }
   finally { pali.classList.remove("habla", "piensa"); pali.classList.add("guino"); $("enviar").disabled = false; linea.scrollIntoView({behavior: "smooth", block: "end"}); }
 }
