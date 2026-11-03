@@ -224,23 +224,36 @@ async function enviar() {
 // Voz femenina con la síntesis del navegador (gratis, sin API). Apagada por defecto.
 let vozOn = false;
 try { vozOn = localStorage.getItem("jopi_voz") === "1"; } catch (e) {}
+// Voz de JOPI: chica argentina joven. Prioridad: voz es-AR femenina (Edge trae "Elena (Natural), Argentina"),
+// después femenina latinoamericana, después cualquier español. El navegador decide qué voces hay.
+const FEM = /(elena|tomasa|female|mujer|paulina|camila|valentina|dalia|monica|mónica|helena|laura|sabina|lucia|lucía|salome|salomé|paloma)/i;
+const MASC = /(male\b|hombre|tomas\b|tomás\b|jorge|diego|pablo|raul|raúl|alvaro|álvaro|gonzalo|lorenzo)/i;
+function puntaje(v) {
+  const lang = (v.lang || "").toLowerCase(), n = v.name || "";
+  if (!lang.startsWith("es") || MASC.test(n)) return -1;
+  let p = 0;
+  if (lang === "es-ar") p += 100;
+  else if (/es-(419|uy|cl|py|mx|us|co)/.test(lang)) p += 40;
+  if (FEM.test(n)) p += 30;
+  if (/natural|neural|online|premium|enhanced/i.test(n)) p += 20;
+  return p;
+}
 function elegirVoz() {
   const voces = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
-  const es = voces.filter(v => v.lang && v.lang.toLowerCase().startsWith("es"));
-  const fem = /(female|mujer|paulina|monica|mónica|helena|laura|sabina|elvira|dalia|elena|lucia|lucía|camila|valentina|google español)/i;
-  return es.find(v => /es-(ar|419|us|mx)/i.test(v.lang) && fem.test(v.name)) || es.find(v => fem.test(v.name)) || es[0] || null;
+  return voces.filter(v => puntaje(v) >= 0).sort((a, b) => puntaje(b) - puntaje(a))[0] || null;
 }
 function hablar(texto) {
   if (!vozOn || !window.speechSynthesis) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(texto.replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/gu, ""));
   const v = elegirVoz(); if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = "es-AR"; }
-  u.pitch = 1.25; u.rate = 1.05;
+  u.pitch = 1.08;   // tono de mujer joven, natural (sin efecto "dibujito")
+  u.rate = 1.07;    // un toque rápida: energía rioplatense
   speechSynthesis.speak(u);
 }
 function pintarVoz() { $("voz").textContent = vozOn ? "🔊" : "🔈"; $("voz").setAttribute("aria-pressed", vozOn); }
 $("voz").onclick = () => { vozOn = !vozOn; try { localStorage.setItem("jopi_voz", vozOn ? "1" : "0"); } catch (e) {}
-  pintarVoz(); if (vozOn) hablar("¡Hola! Ahora me escuchás. Soy JOPI."); else if (window.speechSynthesis) speechSynthesis.cancel(); };
+  pintarVoz(); if (vozOn) hablar("¡Hola! ¿Me escuchás? Soy JOPI, tu compañera de Retail. Dale, preguntame lo que quieras."); else if (window.speechSynthesis) speechSynthesis.cancel(); };
 if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => {};
 pintarVoz();
 
