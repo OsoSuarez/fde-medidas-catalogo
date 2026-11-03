@@ -10,6 +10,8 @@ existan en el contexto (grounding) → un reintento con el error → resultado c
 import argparse
 import json
 import os
+import re
+import unicodedata
 import sys
 import time
 from pathlib import Path
@@ -40,6 +42,38 @@ def _extraer_json(texto: str) -> dict:
         t = t.strip("`").split("\n", 1)[1] if "\n" in t else t
         t = t.rsplit("```", 1)[0]
     return json.loads(t)
+
+
+TEMAS_ROL = {
+    "operario": "medidas y peso del catálogo, packs, medición física, recepción, frío, transferencias y despacho",
+    "supervisor": "medidas y peso, altas de SKU, recepción, frío, transferencias, despacho y mermas",
+    "gerencia": "medidas y altas de SKU, toda la operación del CD, mermas, costos del operador y condiciones comerciales",
+}
+SALUDOS = re.compile(r"^(hola+|buenas?( tardes| noches| dias)?|buen dia|hey|holi|que tal|como (estas|va|andas)|"
+                     r"gracias|muchas gracias|genial|perfecto|ok|dale|chau|adios|nos vemos)( jopi)?$")
+AYUDA = re.compile(r"(con )?(que|en que) (me )?(podes|puedes|sabes) (ayudar|hacer)|quien sos|que sabes|que haces|ayuda$")
+
+
+def _normal(texto: str) -> str:
+    t = unicodedata.normalize("NFD", texto.lower())
+    t = "".join(c for c in t if unicodedata.category(c) != "Mn")
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", " ", t)).strip()
+
+
+def charla_rapida(texto: str, rol: str):
+    """Saludos y "¿con qué me ayudás?" se responden al instante, sin buscar ni llamar al LLM (0 tokens)."""
+    t = _normal(texto)
+    temas = TEMAS_ROL.get(rol, "los procedimientos")
+    if SALUDOS.match(t):
+        if t.startswith(("gracias", "muchas gracias", "genial", "perfecto", "ok", "dale")):
+            return "¡De nada! Para eso estoy 💛 Si te surge otra duda, acá ando con el mate."
+        if t.startswith(("chau", "adios", "nos vemos")):
+            return "¡Chau chau! Que las góndolas te acompañen 👋"
+        return f"¡Holaaa! Acá JOPI 👓 Preguntame lo que necesites sobre {temas}."
+    if AYUDA.search(t):
+        return (f"¡Me encanta esa pregunta! Te puedo ayudar con {temas}. "
+                "Probá con algo como «El proveedor mandó 6x70g, ¿qué peso cargo?» o «¿A qué temperatura recibo congelados?».")
+    return None
 
 
 class MockRAG(ProveedorLLM):
@@ -80,9 +114,15 @@ class Asistente:
             campos = [".".join(map(str, x["loc"])) for x in e.errors(include_input=False)]
             return Resultado(ok=False, error={"codigo": "ENTRADA_INVALIDA", "campos": campos})
 
+        ms = lambda: round((time.perf_counter() - inicio) * 1000)
+        rapida = charla_rapida(p.texto, p.rol.value)
+        if rapida:
+            return Resultado(ok=True, respuesta=rapida, confianza="alta", metricas=Metricas(
+                modelo="sin LLM", intentos=0, input_tokens=0, output_tokens=0, costo_usd=0,
+                latencia_ms=ms(), fragmentos_recuperados=0))
+
         encontrados = self.indice.buscar(p.texto, p.rol, self.k)
         ids = {f"C{n}": e.chunk for n, e in enumerate(encontrados, 1)}
-        ms = lambda: round((time.perf_counter() - inicio) * 1000)
 
         if not encontrados:  # el rol no ve ningún documento: no se gasta un token
             return Resultado(ok=True, respuesta="No tengo procedimientos disponibles para tu rol sobre este tema.",

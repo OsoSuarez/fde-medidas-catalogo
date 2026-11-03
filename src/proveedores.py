@@ -119,19 +119,30 @@ class GeminiProveedor(ProveedorLLM):
         t, err = self._types, self._errors
         contenidos = [{"role": "model" if m["role"] == "assistant" else "user",
                        "parts": [{"text": m["content"]}]} for m in mensajes]
-        try:
-            r = self._cliente.models.generate_content(
-                model=self.modelo,
-                contents=contenidos,
-                config=t.GenerateContentConfig(
-                    system_instruction=sistema,
-                    temperature=0,
-                    max_output_tokens=self.max_tokens,
-                    response_mime_type="application/json",
-                    response_schema=esquema,  # salida estructurada: Gemini respeta la forma de Salida
-                    automatic_function_calling=t.AutomaticFunctionCallingConfig(disable=True),
-                ),
+        def config(con_pensamiento_minimo: bool):
+            extra = {}
+            if con_pensamiento_minimo:
+                # Menos "razonamiento" interno = respuesta más rápida y más barata. Desactivable con GEMINI_THINKING=default.
+                extra["thinking_config"] = t.ThinkingConfig(thinking_level=t.ThinkingLevel.MINIMAL)
+            return t.GenerateContentConfig(
+                system_instruction=sistema,
+                temperature=0,
+                max_output_tokens=self.max_tokens,
+                response_mime_type="application/json",
+                response_schema=esquema,  # salida estructurada: Gemini respeta la forma de Salida
+                automatic_function_calling=t.AutomaticFunctionCallingConfig(disable=True),
+                **extra,
             )
+
+        minimo = os.getenv("GEMINI_THINKING", "minimal") == "minimal" and not getattr(self, "_sin_thinking", False)
+        try:
+            try:
+                r = self._cliente.models.generate_content(model=self.modelo, contents=contenidos, config=config(minimo))
+            except err.ClientError as e:
+                if not (minimo and e.code == 400 and "think" in str(e.message).lower()):
+                    raise
+                self._sin_thinking = True  # este modelo no acepta el nivel mínimo: se sigue sin configurarlo
+                r = self._cliente.models.generate_content(model=self.modelo, contents=contenidos, config=config(False))
         except err.ClientError as e:
             if e.code == 429:
                 raise ErrorProveedor("RATE_LIMIT", f"Límite de uso de la API alcanzado: {e.message}")

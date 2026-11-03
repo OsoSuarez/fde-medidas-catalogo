@@ -91,3 +91,16 @@ def test_condiciones_comerciales_solo_gerencia(indice):
     assert all(e.chunk.acceso == "operario"
                for e in indice.buscar("descuento por volumen del proveedor", Rol.operario, 10))
     assert indice.buscar("descuento por volumen del proveedor", Rol.gerencia, 1)[0].chunk.documento == "11-condiciones-comerciales"
+
+
+def test_saludo_responde_sin_llm(indice):
+    p = Inventor()
+    for texto in ("hola", "Hola JOPI!", "¿con qué me podés ayudar?", "gracias"):
+        r = Asistente(indice, p).responder("gerencia", texto)
+        assert r.ok and r.metricas.input_tokens == 0 and not r.fuentes
+    assert p.llamadas == 0
+
+
+def test_pregunta_real_no_es_charla(indice):
+    from src.rag.agente import charla_rapida
+    assert charla_rapida("hola, ¿a qué temperatura recibo congelados?", "operario") is None
