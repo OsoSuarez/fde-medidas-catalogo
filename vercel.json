@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/chat.py": {
-      "includeFiles": "{src/**,prompts/**,data/indice_cd.json}",
+      "includeFiles": "{src/**,prompts/**,data/procedimientos/**}",
       "maxDuration": 30
     }
   }

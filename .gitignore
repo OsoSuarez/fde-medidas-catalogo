@@ -10,3 +10,7 @@ venv/
 
 # Sistema
 .DS_Store
+
+# Entregables (no van al repo)
+*.pdf
+*.zip

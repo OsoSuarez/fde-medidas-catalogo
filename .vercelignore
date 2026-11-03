@@ -1,7 +1,6 @@
 tests/
 notebooks/
 resultados/
-data/procedimientos/
 *.pdf
 *.zip
 .env

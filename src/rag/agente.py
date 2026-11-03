@@ -53,7 +53,7 @@ class MockRAG(ProveedorLLM):
                  "derivar_a_humano": True, "motivo_derivacion": "Sin fragmentos relevantes: consultar al supervisor."}
         else:
             primero = prompt.split("[C1]", 1)[1].split("[C2]", 1)[0].strip()
-            r = {"respuesta": "Modo demo (sin LLM). Según el procedimiento: " + primero[:600],
+            r = {"respuesta": "¡JOPI en modo demo (sin LLM)! Según el procedimiento: " + primero[:600],
                  "fuentes": ["C1"], "confianza": "media", "derivar_a_humano": False, "motivo_derivacion": None}
         return RespuestaLLM(json.dumps(r, ensure_ascii=False), len(prompt) // 4, 120)
 

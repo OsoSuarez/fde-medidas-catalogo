@@ -61,4 +61,5 @@ def trocear_documento(ruta: Path) -> List[Chunk]:
 
 
 def trocear_carpeta(carpeta: Path) -> List[Chunk]:
-    return [c for ruta in sorted(carpeta.glob("*.md")) for c in trocear_documento(ruta)]
+    return [c for ruta in sorted(carpeta.glob("*.md")) if not ruta.name.startswith("_")
+            for c in trocear_documento(ruta)]
