@@ -4,7 +4,12 @@ Motor LLM que normaliza las **medidas y el peso** de los productos nuevos de un 
 El proveedor manda los datos en sus propias unidades (mm, g, packs, texto libre); el motor propone los valores en
 la unidad estándar del sistema (**cm y kg**), los valida contra un contrato de datos y devuelve cuánto costó y cuánto tardó.
 
-Proyecto del curso *Forward Deployed Engineer* (Coderhouse). Caso relevado en la PE1; esta es la **PE2: motor LLM base y validación estructurada**. Los datos son ficticios.
+Proyecto del curso *Forward Deployed Engineer* (Coderhouse). Caso relevado en la PE1.
+
+- **PE2 — Motor LLM base y validación estructurada** (tag `pe2`): normaliza medidas y peso.
+- **Asistente RAG del CD** (en curso, base de la PE3): responde dudas operativas con los procedimientos del centro de distribución, con permisos por rol. Tiene versión web para Vercel.
+
+Los datos y procedimientos son ficticios.
 
 ## Estructura
 
@@ -62,7 +67,7 @@ python -m src.medir
 **Sin API key** (respuesta simulada): `PROVEEDOR=mock MODELO=mock python -m src.medir`.
 Para ver el reintento y el error estructurado: agregar `MOCK_FALLAR=primero` o `MOCK_FALLAR=siempre`.
 
-**En Google Colab:** [abrir `notebooks/pe2_motor_v2.ipynb`](https://colab.research.google.com/github/OsoSuarez/fde-medidas-catalogo/blob/main/notebooks/pe2_motor_v2.ipynb), cargar `GEMINI_API_KEY` en Secrets y correr las celdas.
+**En Google Colab:** [abrir `notebooks/pe2_motor_v2.ipynb`](https://colab.research.google.com/github/OsoSuarez/fde-medidas-catalogo/blob/main/notebooks/pe2_motor_v2.ipynb), cargar `GOOGLE_API_KEY` en Secrets y correr las celdas.
 
 **Cambiar de proveedor:** `PROVEEDOR=anthropic` (con `MODELO=claude-haiku-5-5` y `ANTHROPIC_API_KEY`) u `openai`
 (con sus precios en `PRECIO_INPUT_MTOK` / `PRECIO_OUTPUT_MTOK`). El resto del código no cambia.
@@ -102,6 +107,57 @@ Modelo: `gemini-3.1-flash-lite`. Precio publicado del tier pago: USD 0,25 por mi
 ([precios de Gemini](https://ai.google.dev/gemini-api/docs/pricing), consultado el 26/10/2026). Con el tier gratis no se cobra;
 el costo informado es **hipotético**: lo que costaría con la tarifa paga.
 
-> La consigna menciona OpenAI o Anthropic; este motor usa Gemini (como la clase) y también soporta Anthropic
-> (`PROVEEDOR=anthropic`). Confirmar con la cátedra si Gemini se acepta para la entrega formal.
+> El motor usa Gemini (aceptado por la cátedra) y también soporta Anthropic (`PROVEEDOR=anthropic`) y OpenAI.
+
 Resultados en `resultados/mediciones.md`.
+
+---
+
+## Asistente RAG del CD
+
+Responde preguntas del personal ("¿a qué temperatura recibo congelados?") usando **solo** los procedimientos de `data/procedimientos/`, cita de dónde sacó la respuesta y deriva al supervisor cuando no está escrito.
+
+```
+documentos → chunking (por sección, con prefijo de contexto) → embeddings → índice / ChromaDB
+pregunta → filtro por rol → búsqueda híbrida (vectores + BM25, fusión RRF) → LLM → validación Pydantic + fuentes verificadas
+```
+
+| Pieza | Archivo |
+|---|---|
+| Procedimientos (6, ficticios, con nivel de acceso) | `data/procedimientos/*.md` |
+| Contrato (Pregunta, RespuestaModelo, roles y permisos) | `src/rag/contrato.py` |
+| Chunking estructural con solapamiento | `src/rag/chunking.py` |
+| Embeddings: Gemini o local sin API | `src/rag/embeddings.py` |
+| Índice, búsqueda híbrida, ChromaDB | `src/rag/indice.py` |
+| Asistente (prompt, reintento, grounding de fuentes) | `src/rag/agente.py`, `prompts/rag_*.md` |
+| Personalidad de JOPI (tono) | `prompts/rag_sistema.md` |
+| Web: chat + función serverless | `public/index.html`, `api/chat.py`, `vercel.json` |
+| Notebook Colab | `notebooks/pe3_asistente_cd.ipynb` |
+
+**Permisos por rol (RBAC):** operario ve recepción, frío, transferencias y despacho; supervisor suma mermas; gerencia suma costos del operador.
+El filtro se aplica **antes** de buscar, así que un operario nunca recupera el documento de costos, aunque lo pida.
+En la web, el rol sale de la **clave de acceso** que valida el servidor, no de lo que mande el navegador.
+
+```bash
+python -m src.rag.indexar                       # arma data/indice_cd.json (sin API key)
+python -m src.rag.indexar --embedder gemini     # con embeddings de Gemini
+python -m src.rag.agente --rol operario --pregunta "¿A qué temperatura recibo congelados?"
+CLAVES_ROLES="operario:op1,supervisor:sup1,gerencia:ger1" python servidor_local.py   # web en localhost:8000
+```
+
+### Agregar conocimiento a JOPI
+
+1. Copiá `data/procedimientos/_plantilla.md`, renombralo (ej. `07-inventario-ciclico.md`) y completalo. Elegí `acceso`: operario, supervisor o gerencia.
+2. Subilo a GitHub (desde la web: **Add file → Upload files** dentro de `data/procedimientos`, o con `git push`).
+3. Vercel vuelve a publicar solo y JOPI arma su índice con el archivo nuevo al arrancar.
+
+### Publicar en Vercel
+
+1. En [vercel.com](https://vercel.com), **Add New → Project** e importar este repo de GitHub. Framework: *Other*.
+2. En **Environment Variables** cargar:
+   - `GEMINI_API_KEY`: tu clave de Gemini.
+   - `CLAVES_ROLES`: por ejemplo `operario:clave1,supervisor:clave2,gerencia:clave3` (inventá las tuyas).
+   - Opcional: `MODELO` (por defecto `gemini-3.1-flash-lite`). Con `PROVEEDOR=mock` funciona sin clave, en modo demo.
+3. **Deploy.** Cada `git push` vuelve a publicar.
+
+ChromaDB no entra en una función serverless: en Vercel el índice se arma en memoria desde los `.md` al arrancar y la búsqueda corre en Python puro. En Colab se usa ChromaDB con los mismos fragmentos y vectores.

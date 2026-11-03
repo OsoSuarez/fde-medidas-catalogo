@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JOPI, asistente del CD</title>
+<style>
+:root{--bg:#fbf7ef;--panel:#ffffff;--ink:#22252b;--muted:#6d7280;--line:#ece5d8;--amber:#f5a623;--amber-d:#d98b0b;--amber-s:#fff3dc;--steel:#3d4756;--warn:#b5520b;--user:#2d6cdf;--floor:#e4dccb;--box:#d19a5b;--box-d:#a9733b;--cheek:#ff8fa8;--bow:#ff5c93;--lash:#2a2a2a;--pelo:#3d2314;--piel:#f7d3b9;--piel-d:#e8b998;--iris:#7a4a24;--marco:#17130f;--blazer:#6e4126;--blazer-d:#4d2a16;--cuero-brillo:#9a6440}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#16181c;--panel:#20232a;--ink:#eeece8;--muted:#9da3ad;--line:#30343c;--amber-s:#3a2f1a;--steel:#a9b7c9;--user:#4c86ec;--floor:#2b2e35;--box:#b9864e;--box-d:#8d6234}}
+:root[data-theme="dark"]{--bg:#16181c;--panel:#20232a;--ink:#eeece8;--muted:#9da3ad;--line:#30343c;--amber-s:#3a2f1a;--steel:#a9b7c9;--user:#4c86ec;--floor:#2b2e35;--box:#b9864e;--box-d:#8d6234}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Nunito",Inter,system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh;display:flex;flex-direction:column}
+.wrap{max-width:760px;width:100%;margin:0 auto;padding:0 16px}
+header{display:flex;align-items:center;justify-content:space-between;padding-top:14px;gap:10px}
+.marca{display:flex;align-items:center;gap:10px}
+.marca b{font-size:20px}.marca small{display:block;color:var(--muted);font-size:12.5px;font-weight:500}
+.rol{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;background:var(--amber-s);color:var(--amber-d);padding:4px 10px;border-radius:999px}
+.voz{background:var(--panel);border:1.5px solid var(--line);border-radius:999px;cursor:pointer;font-size:15px;padding:2px 8px;vertical-align:middle}.voz[aria-pressed="true"]{border-color:var(--bow)}
+.jopi .ojo{transform-box:fill-box;transform-origin:center;animation:parpadeo 4.5s infinite}
+.jopi .pupila{transition:transform .25s}.jopi.piensa .pupila{transform:translate(1.4px,-1.8px)}
+.jopi.guino .ojo-d{animation:guino .7s ease-in-out 1}@keyframes guino{40%,60%{transform:scaleY(.12)}}
+.jopi .brazo{transform-box:view-box;transform-origin:53px 58px}
+.jopi.saluda .brazo{animation:saludo 1.4s ease-in-out infinite}@keyframes saludo{0%,100%{transform:rotate(0)}25%{transform:rotate(-16deg)}75%{transform:rotate(10deg)}}
+.jopi .boca{transform-box:fill-box;transform-origin:top center}
+.jopi.habla .boca{animation:charla .45s ease-in-out infinite}@keyframes charla{50%{transform:scaleY(.55)}}
+.jopi.habla .brazo{animation:saludo 1.8s ease-in-out infinite}
+.jopi.grande{animation:rebote 3s ease-in-out infinite}@keyframes rebote{50%{transform:translateY(-4px)}}
+.ficha{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:-4px 0 16px}.ficha span{font-size:12.5px;background:var(--amber-s);border-radius:999px;padding:4px 10px}
+.salir{background:none;border:0;color:var(--muted);cursor:pointer;font:inherit;font-size:12.5px;text-decoration:underline}
+/* JOPI */
+.pali{width:46px;height:46px;flex:none}
+@keyframes parpadeo{0%,94%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+@keyframes sube{50%{transform:translateY(-4px)}}
+/* depósito */
+.deposito{height:70px;position:relative;overflow:hidden;border-bottom:5px solid var(--floor);margin-top:8px}
+.rack{position:absolute;bottom:0;width:104px;height:60px;border-left:4px solid var(--steel);border-right:4px solid var(--steel);opacity:.85}
+.rack::before{content:"";position:absolute;left:0;right:0;top:28px;height:4px;background:var(--steel)}
+.rack i{position:absolute;width:24px;height:20px;background:var(--box);border:2px solid var(--box-d);border-radius:3px}
+.r1{left:2%}.r2{right:2%}
+.mini{position:absolute;bottom:1px;left:-70px;width:64px;height:44px;z-index:2;animation:ruta 12s ease-in-out infinite}
+@keyframes ruta{0%{left:-70px;transform:scaleX(1)}45%{left:calc(100% - 180px);transform:scaleX(1)}50%{left:calc(100% - 180px);transform:scaleX(-1)}95%{left:-70px;transform:scaleX(-1)}100%{left:-70px;transform:scaleX(1)}}
+.mini .caja{animation:carga 12s ease-in-out infinite}
+@keyframes carga{0%,44%{opacity:1}46%,96%{opacity:0}98%,100%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.mini,.mini .caja,.jopi *,.jopi{animation:none!important}.mini{left:30%}}
+main{flex:1;display:flex;flex-direction:column;padding-top:16px}
+.tarjeta{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.05)}
+.tarjeta .pali{width:110px;height:110px}
+.tarjeta h2{margin:8px 0 4px;font-size:21px}.tarjeta p{margin:0 0 16px;color:var(--muted)}
+.fila{display:flex;gap:8px}
+input,textarea{flex:1;font:inherit;font-size:15px;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;min-width:0;outline:none}
+input:focus,textarea:focus{border-color:var(--amber)}
+textarea{resize:none;height:50px}
+.btn{font:inherit;font-weight:800;background:var(--amber);color:#2a1d05;border:0;border-radius:14px;padding:0 18px;cursor:pointer}
+.btn:hover{background:var(--amber-d)}.btn:disabled{opacity:.55;cursor:wait}
+.err{color:#d03535;font-size:13.5px;margin-top:10px;min-height:1.1em}
+.chat{flex:1;display:flex;flex-direction:column;gap:12px;padding-bottom:12px}
+.linea{display:flex;gap:8px;align-items:flex-end}
+.linea.yo{justify-content:flex-end}
+.linea .pali{width:38px;height:38px}
+.msg{max-width:min(82%,560px);padding:11px 14px;border-radius:18px;line-height:1.5;font-size:15px;white-space:pre-wrap;word-wrap:break-word;animation:entra .25s ease-out}
+@keyframes entra{from{opacity:0;transform:translateY(6px)}}
+.yo .msg{background:var(--user);color:#fff;border-bottom-right-radius:6px}
+.bot .msg{background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:6px}
+.meta{margin-top:9px;display:flex;flex-wrap:wrap;gap:6px;font-size:12px;color:var(--muted)}
+.chip{background:var(--amber-s);border-radius:999px;padding:3px 9px}
+.deriva{margin-top:9px;background:rgba(181,82,11,.09);border-radius:10px;padding:7px 10px;font-size:13.5px;color:var(--warn)}
+.ejemplos{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 12px}
+.ejemplos button{font:inherit;font-size:13.5px;background:var(--panel);color:var(--ink);border:1.5px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer}
+.ejemplos button:hover{border-color:var(--amber)}
+.barra{position:sticky;bottom:0;background:var(--bg);padding:10px 0 16px}
+.puntos{display:inline-flex;gap:5px;padding:4px 0}.puntos b{width:8px;height:8px;border-radius:3px;background:var(--box);animation:salto 1s infinite}
+.puntos b:nth-child(2){animation-delay:.15s}.puntos b:nth-child(3){animation-delay:.3s}
+@keyframes salto{50%{transform:translateY(-6px)}}
+.pie{font-size:12px;color:var(--muted);text-align:center;margin-top:7px}
+.oculto{display:none!important}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="marca"><span class="slot-jopi"></span><div><b>JOPI</b><small>Tu compañera en Retail</small></div></div>
+    <div id="sesion"><button class="voz" id="voz" title="Que JOPI hable en voz alta" aria-pressed="false">🔈</button></div>
+  </header>
+  <div class="deposito" aria-hidden="true">
+    <div class="rack r1"><i style="left:6px;top:4px"></i><i style="left:36px;top:4px"></i><i style="left:66px;top:36px"></i><i style="left:6px;top:36px"></i></div>
+    <div class="rack r2"><i style="left:36px;top:36px"></i><i style="left:66px;top:4px"></i><i style="left:6px;top:4px"></i></div>
+    <svg class="mini" viewBox="0 0 64 44"><rect x="46" y="4" width="3" height="36" fill="var(--steel)"/><rect x="49" y="37" width="14" height="3" fill="var(--steel)"/>
+      <g class="caja"><rect x="50" y="20" width="14" height="16" rx="2" fill="var(--box)" stroke="var(--box-d)" stroke-width="2"/></g>
+      <rect x="4" y="18" width="40" height="18" rx="7" fill="var(--amber)"/><rect x="12" y="4" width="20" height="16" rx="3" fill="none" stroke="var(--steel)" stroke-width="3"/>
+      <circle cx="13" cy="38" r="5" fill="#2f2f2f"/><circle cx="35" cy="38" r="5" fill="#2f2f2f"/></svg>
+  </div>
+</div>
+
+<main class="wrap">
+  <section class="tarjeta" id="intro">
+    <span class="slot-jopi grande saluda"></span>
+    <h2>¡Holaaa! Soy JOPI 💛</h2>
+    <p><b>Conozco los procedimientos de Retail.</b> Preguntame lo que quieras.</p>
+    <div class="ficha">
+      <span>👓 Gerenta de Retail · 1,55 m de pura energía</span>
+      <span>💛 Ama las góndolas ordenadas</span>
+      <span>😤 Odia los proveedores sin turno</span>
+      <span>🧉 Mate en mano desde las 6</span>
+    </div>
+  </section>
+
+  <section id="app" style="display:flex;flex-direction:column;flex:1;margin-top:14px">
+    <div class="ejemplos" id="ejemplos"></div>
+    <div class="chat" id="chat"></div>
+    <div class="barra">
+      <div class="fila"><textarea id="pregunta" placeholder="Escribile a JOPI…"></textarea><button class="btn" id="enviar">Enviar</button></div>
+      <div class="pie">JOPI responde con los procedimientos escritos. Si algo no está, te manda con tu supervisor.</div>
+    </div>
+  </section>
+</main>
+
+<script>
+const EJEMPLOS = {
+  operario: ["¿A qué temperatura recibo congelados?", "Llegó un camión sin turno", "¿Altura máxima del pallet?"],
+  supervisor: ["¿Qué hago con productos vencidos?", "¿Cuándo apruebo una merma?", "La tienda reclama un faltante"],
+  gerencia: ["¿Cuánto cobra el operador por línea?", "¿Meta de costo sobre ventas?", "¿Cómo concilio la factura?"]
+};
+const TEMAS = {operario: "recepción, frío, transferencias y despacho", supervisor: "recepción, frío, transferencias, despacho y mermas",
+  gerencia: "todo lo operativo, mermas y costos del operador"};
+const $ = id => document.getElementById(id);
+// JOPI: gerenta de Retail chiquita, anteojos de marco grueso, pelo castaño oscuro, ojos marrones, campera de cuero y camisa blanca. SVG inline para poder animarla.
+const JOPI_SVG = `<svg class="pali jopi" viewBox="0 0 80 80" role="img" aria-label="JOPI, gerenta de Retail">
+  <ellipse cx="40" cy="77" rx="20" ry="2.6" fill="#000" opacity=".09"/>
+  <path d="M17 31Q15 53 23 59L57 59Q65 53 63 31Z" fill="var(--pelo)"/>
+  <ellipse cx="40" cy="31" rx="23.5" ry="23" fill="var(--pelo)"/>
+  <path d="M25 57Q40 50 55 57L57 75Q40 78 23 75Z" fill="var(--blazer)"/>
+  <path d="M34.5 54L40 76L45.5 54Z" fill="#fff"/>
+  <path d="M35.2 54.2L38.3 59.2L36 60.6ZM44.8 54.2L41.7 59.2L44 60.6Z" fill="#e9edf2"/>
+  <path d="M40 61v14" stroke="#d5dbe3" stroke-width=".8"/><circle cx="40" cy="64" r=".7" fill="#c3cad3"/><circle cx="40" cy="68" r=".7" fill="#c3cad3"/>
+  <path d="M34.5 54L37.5 64L31 61.5L29 56ZM45.5 54L42.5 64L49 61.5L51 56Z" fill="var(--blazer-d)"/>
+  <path d="M27.5 60Q29 67 28.5 74M52.5 60Q51 67 51.5 74" stroke="var(--cuero-brillo)" stroke-width="1.1" fill="none" opacity=".7"/>
+  <path d="M36.6 70l-.2 5M43.4 70l.2 5" stroke="#c9a46b" stroke-width=".9"/>
+  <rect x="45.5" y="63" width="8" height="5.5" rx="1.2" fill="#fff" stroke="var(--amber)" stroke-width="1"/>
+  <path d="M47 65.2h5M47 67h3" stroke="var(--amber-d)" stroke-width=".8"/>
+  <rect x="16" y="60" width="12" height="14" rx="2" fill="#dfe6ee" stroke="var(--steel)" stroke-width="1.4"/>
+  <path d="M19 64h6M19 67h6M19 70h4" stroke="var(--steel)" stroke-width="1" opacity=".7"/>
+  <circle cx="27" cy="66" r="2.6" fill="var(--piel)"/>
+  <g class="brazo"><path d="M53 58Q60 55 63 47" stroke="var(--blazer)" stroke-width="5.5" fill="none" stroke-linecap="round"/><circle cx="63.4" cy="45.6" r="3.2" fill="var(--piel)"/></g>
+  <rect x="37" y="48" width="6" height="7" rx="2" fill="var(--piel-d)"/>
+  <ellipse cx="40" cy="33" rx="18.5" ry="18.5" fill="var(--piel)"/>
+  <path d="M21.5 32Q21 13 40 12.5Q59 13 58.5 32Q55 22 47 21.5Q44 25 37 24.5Q30 24 27 20.5Q23 25 21.5 32Z" fill="var(--pelo)"/>
+  <path d="M28.5 25.5q4-2.2 8 0M43.5 25.5q4-2.2 8 0" stroke="var(--pelo)" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+  <g class="ojo ojo-i"><ellipse cx="33" cy="34.5" rx="4.6" ry="5.6" fill="#fff"/><g class="pupila"><ellipse cx="33" cy="35" rx="3.6" ry="4.4" fill="var(--iris)"/><circle cx="33" cy="35.3" r="1.9" fill="#1d0f06"/><circle cx="34.4" cy="33.2" r="1.3" fill="#fff"/></g></g>
+  <g class="ojo ojo-d"><ellipse cx="47" cy="34.5" rx="4.6" ry="5.6" fill="#fff"/><g class="pupila"><ellipse cx="47" cy="35" rx="3.6" ry="4.4" fill="var(--iris)"/><circle cx="47" cy="35.3" r="1.9" fill="#1d0f06"/><circle cx="48.4" cy="33.2" r="1.3" fill="#fff"/></g></g>
+  <path d="M25.6 29.6Q25.4 28.2 27 28.3L38 28.6Q39.3 28.7 39.2 30.1L38.6 37.4Q38.3 40.6 35.1 40.7L30 40.8Q26.6 40.8 26.2 37.5Z" fill="#fff" fill-opacity=".14" stroke="var(--marco)" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M54.4 29.6Q54.6 28.2 53 28.3L42 28.6Q40.7 28.7 40.8 30.1L41.4 37.4Q41.7 40.6 44.9 40.7L50 40.8Q53.4 40.8 53.8 37.5Z" fill="#fff" fill-opacity=".14" stroke="var(--marco)" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M25.4 29.3L23.6 27.2M54.6 29.3L56.4 27.2" stroke="var(--marco)" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M39.2 30.4Q40 29.4 40.8 30.4" stroke="var(--marco)" stroke-width="2.2" fill="none"/>
+  <path d="M25.8 31.5L21.8 30.6M54.2 31.5L58.2 30.6" stroke="var(--marco)" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M28 30.6l3.2 3.4M43 30.6l3.2 3.4" stroke="#fff" stroke-width="1" opacity=".55" stroke-linecap="round"/>
+  <g class="boca"><path d="M36.2 43.2Q40 48.6 43.8 43.2Z" fill="#6e3a2e"/><path d="M38 45.8q2 1.4 4 0" fill="#d98b7a"/></g>
+  <circle cx="57.6" cy="39" r="1.3" fill="#f5c542"/><circle cx="22.4" cy="39" r="1.3" fill="#f5c542"/>
+</svg>`;
+const avatar = () => JOPI_SVG;
+document.querySelectorAll(".slot-jopi").forEach(el => { el.outerHTML = JOPI_SVG.replace('class="pali jopi"', 'class="pali jopi ' + el.className.replace("slot-jopi", "") + '"'); });
+
+async function llamar(pregunta) {
+  const r = await fetch("/api/chat", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({pregunta})});
+  let datos = {};
+  try { datos = await r.json(); } catch (e) { datos = {ok: false, error: {mensaje: "Respuesta inválida del servidor."}}; }
+  return {status: r.status, datos};
+}
+
+async function iniciar() {
+  let rol = "operario";
+  try { const {status, datos} = await llamar("__inicio__"); if (status === 200 && datos.rol) rol = datos.rol; } catch (e) {}
+  mostrarApp(rol);
+}
+
+function mostrarApp(rol) {
+  $("ejemplos").innerHTML = "";
+  (EJEMPLOS[rol] || []).forEach(t => {
+    const b = document.createElement("button"); b.textContent = t;
+    b.onclick = () => { $("pregunta").value = t; enviar(); };
+    $("ejemplos").appendChild(b);
+  });
+  if (!$("chat").children.length) burbuja("bot", "¡Hola, hola! Acá JOPI, lista para resolver dudas 👓 Te ayudo con " + (TEMAS[rol] || "los procedimientos") + ". ¿Qué necesitás?");
+}
+
+function burbuja(quien, texto) {
+  const l = document.createElement("div"); l.className = "linea " + quien;
+  if (quien === "bot") l.innerHTML = avatar();
+  const m = document.createElement("div"); m.className = "msg"; m.textContent = texto;
+  l.appendChild(m); $("chat").appendChild(l);
+  l.scrollIntoView({behavior: "smooth", block: "end"});
+  return {linea: l, msg: m};
+}
+
+async function enviar() {
+  const texto = $("pregunta").value.trim();
+  if (!texto) return;
+  $("pregunta").value = ""; $("enviar").disabled = true;
+  burbuja("yo", texto);
+  const {linea, msg} = burbuja("bot", "");
+  const pali = linea.querySelector(".pali"); pali.classList.add("habla", "piensa");
+  msg.innerHTML = '<span class="puntos"><b></b><b></b><b></b></span>';
+  try {
+    const {status, datos} = await llamar(texto);
+    if (status === 429) { msg.textContent = "¡Pará, pará! 😅 Me hiciste muchas preguntas seguidas. Dame un minutito y seguimos."; return; }
+    if (!datos.ok) { msg.textContent = "¡Uy! Se me cayó el mate encima del teclado 😵 (" + ((datos.error && (datos.error.mensaje || datos.error.codigo)) || "error") + ")"; return; }
+    msg.textContent = datos.respuesta;
+    hablar(datos.respuesta);
+    if (datos.derivar_a_humano) {
+      const w = document.createElement("div"); w.className = "deriva";
+      w.textContent = "👉 Esto mejor charlalo con tu supervisor" + (datos.motivo_derivacion ? ": " + datos.motivo_derivacion : ".");
+      msg.appendChild(w);
+    }
+    const m = document.createElement("div"); m.className = "meta";
+    (datos.fuentes || []).forEach(f => { const c = document.createElement("span"); c.className = "chip"; c.textContent = "📄 " + f.titulo + " › " + f.seccion; m.appendChild(c); });
+    if (m.children.length) msg.appendChild(m);
+  } catch (e) { msg.textContent = "No me puedo conectar al servidor."; }
+  finally { pali.classList.remove("habla", "piensa"); pali.classList.add("guino"); $("enviar").disabled = false; linea.scrollIntoView({behavior: "smooth", block: "end"}); }
+}
+
+// Voz femenina con la síntesis del navegador (gratis, sin API). Apagada por defecto.
+let vozOn = false;
+try { vozOn = localStorage.getItem("jopi_voz") === "1"; } catch (e) {}
+function elegirVoz() {
+  const voces = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
+  const es = voces.filter(v => v.lang && v.lang.toLowerCase().startsWith("es"));
+  const fem = /(female|mujer|paulina|monica|mónica|helena|laura|sabina|elvira|dalia|elena|lucia|lucía|camila|valentina|google español)/i;
+  return es.find(v => /es-(ar|419|us|mx)/i.test(v.lang) && fem.test(v.name)) || es.find(v => fem.test(v.name)) || es[0] || null;
+}
+function hablar(texto) {
+  if (!vozOn || !window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(texto.replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/gu, ""));
+  const v = elegirVoz(); if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = "es-AR"; }
+  u.pitch = 1.25; u.rate = 1.05;
+  speechSynthesis.speak(u);
+}
+function pintarVoz() { $("voz").textContent = vozOn ? "🔊" : "🔈"; $("voz").setAttribute("aria-pressed", vozOn); }
+$("voz").onclick = () => { vozOn = !vozOn; try { localStorage.setItem("jopi_voz", vozOn ? "1" : "0"); } catch (e) {}
+  pintarVoz(); if (vozOn) hablar("¡Hola! Ahora me escuchás. Soy JOPI."); else if (window.speechSynthesis) speechSynthesis.cancel(); };
+if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => {};
+pintarVoz();
+
+$("enviar").onclick = enviar;
+$("pregunta").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviar(); } });
+iniciar();
+</script>
+</body>
+</html>
