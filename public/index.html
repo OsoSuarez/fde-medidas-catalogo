@@ -258,7 +258,15 @@ async function enviar() {
   try {
     const {status, datos} = await llamar(texto);
     if (status === 429) { msg.textContent = "¡Pará, pará! 😅 Me hiciste muchas preguntas seguidas. Dame un minutito y seguimos."; return; }
-    if (!datos.ok) { msg.textContent = "¡Uy! Se me cayó el mate encima del teclado 😵 (" + ((datos.error && (datos.error.mensaje || datos.error.codigo)) || "error") + ")"; return; }
+    if (!datos.ok) {
+      const cod = datos.error && datos.error.codigo;
+      msg.textContent = cod === "SIN_CREDITO" ? "Me quedé sin crédito para pensar 😅 Avisale a quien me administra y enseguida vuelvo."
+        : cod === "RATE_LIMIT" ? "Estoy atendiendo a mucha gente a la vez 😵 Probá de nuevo en un minuto."
+        : cod === "AUTENTICACION" ? "Tengo un problema con mi llave de acceso 🔑 Avisale a quien me administra."
+        : "¡Uy! Se me cayó el mate encima del teclado 😵 Probá de nuevo en un ratito.";
+      console.warn("JOPI error:", datos.error);
+      return;
+    }
     msg.textContent = datos.respuesta;
     hablar(datos.respuesta);
     recordar("usuario", texto); recordar("jopi", datos.respuesta);

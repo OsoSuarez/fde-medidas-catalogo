@@ -5,7 +5,7 @@ El rol NO lo elige el usuario en la pregunta: lo resuelve el servidor a partir d
 (ver api/chat.py). Así un operario no puede "pedir" ser gerencia.
 """
 from enum import Enum
-from typing import List, Optional
+from typing import Annotated, List, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -34,9 +34,17 @@ class Chunk(BaseModel):
     hash_documento: str                                 # para saber qué vectores invalidar si cambia el doc
 
 
+class Turno(BaseModel):
+    """Un mensaje previo de la charla: sirve para entender repreguntas ("¿y si es congelado?")."""
+    quien: str = Field(pattern=r"^(usuario|jopi)$")
+    texto: str = Field(min_length=1, max_length=600)
+
+
 class Pregunta(BaseModel):
     rol: Rol
-    texto: str = Field(min_length=3, max_length=500)
+    texto: str = Field(min_length=2, max_length=500)
+    nombre: Optional[str] = Field(default=None, max_length=30, pattern=r"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' -]+$")
+    historial: List[Turno] = Field(default_factory=list, max_length=6)
 
 
 class Confianza(str, Enum):
@@ -52,6 +60,7 @@ class RespuestaModelo(BaseModel):
     confianza: Confianza
     derivar_a_humano: bool
     motivo_derivacion: Optional[str] = Field(default=None, max_length=300)
+    sugerencias: List[Annotated[str, Field(max_length=90)]] = Field(default_factory=list, max_length=3)
 
     @model_validator(mode="after")
     def coherencia(self):
@@ -87,5 +96,6 @@ class Resultado(BaseModel):
     confianza: Optional[Confianza] = None
     derivar_a_humano: bool = False
     motivo_derivacion: Optional[str] = None
+    sugerencias: List[str] = Field(default_factory=list)
     error: Optional[dict] = None
     metricas: Optional[Metricas] = None

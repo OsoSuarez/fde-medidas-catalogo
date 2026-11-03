@@ -144,6 +144,8 @@ class GeminiProveedor(ProveedorLLM):
                 self._sin_thinking = True  # este modelo no acepta el nivel mínimo: se sigue sin configurarlo
                 r = self._cliente.models.generate_content(model=self.modelo, contents=contenidos, config=config(False))
         except err.ClientError as e:
+            if e.code == 402:
+                raise ErrorProveedor("SIN_CREDITO", "El proyecto de Gemini no tiene crédito (revisar facturación en AI Studio)")
             if e.code == 429:
                 raise ErrorProveedor("RATE_LIMIT", f"Límite de uso de la API alcanzado: {e.message}")
             if e.code in (401, 403) or "API key" in str(e.message):

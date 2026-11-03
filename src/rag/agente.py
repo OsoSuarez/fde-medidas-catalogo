@@ -61,6 +61,8 @@ INTENCIONES = [
     ("gracias", re.compile(r"^(gracias|muchas gracias|mil gracias|genial|perfecto|ok|okey|dale|buenisimo|joya|barbaro)( jopi)?$")),
     ("chau", re.compile(r"^(chau|chao|adios|nos vemos|hasta luego|me voy)( jopi)?$")),
     ("quien", re.compile(r"(quien sos|que sos|como te llamas|presentate)")),
+    ("elogio", re.compile(r"^(me (gusta|encanta) (tu|como) \w+|sos (una )?(genia|groso|grosa|crack|lo mas|divina|re linda)|te (quiero|amo)|"
+                          r"que (linda|genia|crack)|(ja)+j?a?|jaja\w*|buenisima|que buena)$")),
     ("ayuda", re.compile(r"(con )?(que|en que) (me )?(podes|puedes|sabes) (ayudar|hacer)|que sabes|que haces|^ayuda$")),
 ]
 FRASES = {
@@ -74,6 +76,9 @@ FRASES = {
                 "¡Un placer{n}! Si surge otra duda, acá ando.",
                 "¡Joya! ¿Seguimos con otra o te dejo laburar tranquilo{n}?"],
     "chau": ["¡Chau chau{n}! Que las góndolas te acompañen 👋", "¡Nos vemos{n}! Cualquier cosa, ya sabés dónde encontrarme 🧉"],
+    "elogio": ["¡Ayyy, gracias{n}! 🙈 Me vas a hacer poner colorada… ¿Seguimos? ¿Qué necesitás?",
+               "¡Qué lindo leer eso{n}! 💛 Para eso estoy. ¿Te ayudo con algo más?",
+               "¡Jaja, me alegraste el turno{n}! 🎶 Tirame la próxima pregunta."],
     "quien": ["Soy JOPI, la gerenta de Retail más chiquita y con más energía 👓 Me sé los procedimientos de memoria. ¿Qué querés saber{n}?"],
 }
 

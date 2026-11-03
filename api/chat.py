@@ -69,8 +69,11 @@ class handler(BaseHTTPRequestHandler):
         global _asistente
         rol = _rol_desde_clave(self.headers.get("X-Clave", "")) or _rol_publico()
         try:
-            largo = min(int(self.headers.get("Content-Length", 0)), 4000)
-            pregunta = json.loads(self.rfile.read(largo) or b"{}").get("pregunta", "")
+            largo = min(int(self.headers.get("Content-Length", 0)), 12000)
+            cuerpo_in = json.loads(self.rfile.read(largo) or b"{}")
+            pregunta = cuerpo_in.get("pregunta", "")
+            historial = cuerpo_in.get("historial") or []
+            nombre = (cuerpo_in.get("nombre") or "").strip() or None
         except (ValueError, AttributeError):
             return self._responder(400, {"ok": False, "error": {"codigo": "JSON_INVALIDO"}})
         if pregunta == "__inicio__":  # la página pide su rol para mostrar ejemplos; no gasta tokens
@@ -83,7 +86,9 @@ class handler(BaseHTTPRequestHandler):
         if _asistente is None:
             # El índice se arma al arrancar desde data/procedimientos/*.md: agregar conocimiento = subir un .md
             _asistente = Asistente(Indice(construir_indice(os.getenv("EMBEDDER", "hash"))))
-        res = _asistente.responder(rol, str(pregunta))
+        if not isinstance(historial, list):
+            historial = []
+        res = _asistente.responder(rol, str(pregunta), historial[-6:], nombre)
         cuerpo = res.model_dump(mode="json")
         cuerpo["rol"] = rol
         self._responder(200 if res.ok else 422, cuerpo)

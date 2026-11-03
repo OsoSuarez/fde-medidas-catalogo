@@ -104,3 +104,27 @@ def test_saludo_responde_sin_llm(indice):
 def test_pregunta_real_no_es_charla(indice):
     from src.rag.agente import charla_rapida
     assert charla_rapida("hola, ¿a qué temperatura recibo congelados?", "operario") is None
+
+
+def test_charla_con_nombre_y_sugerencias():
+    from src.rag.agente import charla_rapida
+    resp, sug = charla_rapida("¿Cómo andás?", "operario", "Nico")
+    assert "Nico" in resp and len(sug) == 3
+    assert charla_rapida("chau jopi", "operario")[1] == []
+
+
+def test_repregunta_usa_historial(indice):
+    class Espia(ProveedorLLM):
+        def __init__(self):
+            super().__init__("mock"); self.prompt = ""
+        def generar(self, sistema, mensajes, esquema=None):
+            self.prompt = mensajes[0]["content"]
+            r = {"respuesta": "Respuesta de prueba.", "fuentes": ["C1"], "confianza": "media",
+                 "derivar_a_humano": False, "sugerencias": ["¿Y si es seco?"]}
+            return RespuestaLLM(json.dumps(r), 100, 30)
+    e = Espia()
+    hist = [{"quien": "usuario", "texto": "¿A qué temperatura recibo los refrigerados?"},
+            {"quien": "jopi", "texto": "Entre 0 °C y 5 °C." * 80}]   # texto largo: se recorta, no rompe
+    r = Asistente(indice, e).responder("operario", "¿y los congelados?", hist, "Nico")
+    assert r.ok and r.sugerencias == ["¿Y si es seco?"]
+    assert "Nico" in e.prompt and "refrigerados" in e.prompt and "02-recepcion-frio" in [f.documento for f in r.fuentes]
