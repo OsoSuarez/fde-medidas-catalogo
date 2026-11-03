@@ -102,6 +102,8 @@ textarea{resize:none;height:50px}
       <span>💛 Ama las góndolas ordenadas</span>
       <span>😤 Odia los proveedores sin turno</span>
       <span>🧉 Mate en mano desde las 6</span>
+      <span>🎶 Pickea mercadería con buena música de fondo</span>
+      <span>🚀 Creada para revolucionar el retail</span>
     </div>
   </section>
 
@@ -117,12 +119,13 @@ textarea{resize:none;height:50px}
 
 <script>
 const EJEMPLOS = {
-  operario: ["¿A qué temperatura recibo congelados?", "Llegó un camión sin turno", "¿Altura máxima del pallet?"],
-  supervisor: ["¿Qué hago con productos vencidos?", "¿Cuándo apruebo una merma?", "La tienda reclama un faltante"],
-  gerencia: ["¿Cuánto cobra el operador por línea?", "¿Meta de costo sobre ventas?", "¿Cómo concilio la factura?"]
+  operario: ["El proveedor mandó 6x70g, ¿qué peso cargo?", "¿A qué temperatura recibo congelados?", "¿Cómo mido un producto?"],
+  supervisor: ["¿Quién aprueba el alta de un SKU?", "¿Qué hago con productos vencidos?", "¿Cuándo apruebo una merma?"],
+  gerencia: ["El proveedor mandó 6x70g, ¿qué peso cargo?", "¿Cómo es el alta de un SKU?", "¿Qué pasa si un proveedor informa mal las medidas?"]
 };
-const TEMAS = {operario: "recepción, frío, transferencias y despacho", supervisor: "recepción, frío, transferencias, despacho y mermas",
-  gerencia: "todo lo operativo, mermas y costos del operador"};
+const TEMAS = {operario: "medidas y peso del catálogo, recepción, frío, transferencias y despacho",
+  supervisor: "medidas y peso, altas de SKU, recepción, frío, transferencias, despacho y mermas",
+  gerencia: "medidas y altas de SKU, toda la operación, mermas, costos y condiciones comerciales"};
 const $ = id => document.getElementById(id);
 // JOPI: gerenta de Retail chiquita, anteojos de marco grueso, pelo castaño oscuro, ojos marrones, campera de cuero y camisa blanca. SVG inline para poder animarla.
 const JOPI_SVG = `<svg class="pali jopi" viewBox="0 0 80 80" role="img" aria-label="JOPI, gerenta de Retail">

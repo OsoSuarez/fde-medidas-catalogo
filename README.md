@@ -124,7 +124,7 @@ pregunta → filtro por rol → búsqueda híbrida (vectores + BM25, fusión RRF
 
 | Pieza | Archivo |
 |---|---|
-| Procedimientos (6, ficticios, con nivel de acceso) | `data/procedimientos/*.md` |
+| Procedimientos ficticios con nivel de acceso: 6 de operación del CD + 5 del caso de medidas (estándar cm/kg, alta de SKU, packs y casos dudosos, medición física, condiciones comerciales) | `data/procedimientos/*.md` |
 | Contrato (Pregunta, RespuestaModelo, roles y permisos) | `src/rag/contrato.py` |
 | Chunking estructural con solapamiento | `src/rag/chunking.py` |
 | Embeddings: Gemini o local sin API | `src/rag/embeddings.py` |
@@ -134,15 +134,15 @@ pregunta → filtro por rol → búsqueda híbrida (vectores + BM25, fusión RRF
 | Web: chat + función serverless | `public/index.html`, `api/chat.py`, `vercel.json` |
 | Notebook Colab | `notebooks/pe3_asistente_cd.ipynb` |
 
-**Permisos por rol (RBAC):** operario ve recepción, frío, transferencias y despacho; supervisor suma mermas; gerencia suma costos del operador.
+**Permisos por rol (RBAC):** operario ve medidas, recepción, frío, transferencias y despacho; supervisor suma altas de SKU y mermas; gerencia suma costos del operador y condiciones comerciales con proveedores.
 El filtro se aplica **antes** de buscar, así que un operario nunca recupera el documento de costos, aunque lo pida.
-En la web, el rol sale de la **clave de acceso** que valida el servidor, no de lo que mande el navegador.
+En la web el acceso es abierto: todos entran con el rol de `ROL_PUBLICO`, que decide el servidor (no el navegador). Hay un límite de preguntas por visitante para cuidar la cuota de Gemini.
 
 ```bash
 python -m src.rag.indexar                       # arma data/indice_cd.json (sin API key)
 python -m src.rag.indexar --embedder gemini     # con embeddings de Gemini
 python -m src.rag.agente --rol operario --pregunta "¿A qué temperatura recibo congelados?"
-CLAVES_ROLES="operario:op1,supervisor:sup1,gerencia:ger1" python servidor_local.py   # web en localhost:8000
+ROL_PUBLICO=gerencia python servidor_local.py   # web en localhost:8000
 ```
 
 ### Agregar conocimiento a JOPI
@@ -156,8 +156,8 @@ CLAVES_ROLES="operario:op1,supervisor:sup1,gerencia:ger1" python servidor_local.
 1. En [vercel.com](https://vercel.com), **Add New → Project** e importar este repo de GitHub. Framework: *Other*.
 2. En **Environment Variables** cargar:
    - `GEMINI_API_KEY`: tu clave de Gemini.
-   - `CLAVES_ROLES`: por ejemplo `operario:clave1,supervisor:clave2,gerencia:clave3` (inventá las tuyas).
-   - Opcional: `MODELO` (por defecto `gemini-3.1-flash-lite`). Con `PROVEEDOR=mock` funciona sin clave, en modo demo.
+   - `ROL_PUBLICO`: `gerencia` para que JOPI responda sobre todos los procedimientos (por defecto `operario`).
+   - Opcionales: `LIMITE_PREGUNTAS` (por defecto 20 cada 10 minutos por visitante), `MODELO` (por defecto `gemini-3.1-flash-lite`). Con `PROVEEDOR=mock` funciona sin API key, en modo demo.
 3. **Deploy.** Cada `git push` vuelve a publicar.
 
 ChromaDB no entra en una función serverless: en Vercel el índice se arma en memoria desde los `.md` al arrancar y la búsqueda corre en Python puro. En Colab se usa ChromaDB con los mismos fragmentos y vectores.

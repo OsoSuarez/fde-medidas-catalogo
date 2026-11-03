@@ -80,3 +80,14 @@ def test_fuente_inventada_reintenta_y_falla(indice):
     p = Inventor()
     r = Asistente(indice, p).responder("operario", "¿Cómo armo un pallet?")
     assert not r.ok and r.error["codigo"] == "SALIDA_INVALIDA" and p.llamadas == 2
+
+
+def test_caso_medidas_pack(indice):
+    docs = [e.chunk.documento for e in indice.buscar("el proveedor mandó 6x70g, qué peso cargo", Rol.operario, 4)]
+    assert "09-packs-y-casos-dudosos" in docs
+
+
+def test_condiciones_comerciales_solo_gerencia(indice):
+    assert all(e.chunk.acceso == "operario"
+               for e in indice.buscar("descuento por volumen del proveedor", Rol.operario, 10))
+    assert indice.buscar("descuento por volumen del proveedor", Rol.gerencia, 1)[0].chunk.documento == "11-condiciones-comerciales"
