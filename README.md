@@ -151,6 +151,12 @@ ROL_PUBLICO=gerencia python servidor_local.py   # web en localhost:8000
 2. Subilo a GitHub (desde la web: **Add file → Upload files** dentro de `data/procedimientos`, o con `git push`).
 3. Vercel vuelve a publicar solo y JOPI arma su índice con el archivo nuevo al arrancar.
 
+### La voz de JOPI
+
+Con el parlante 🔈 activado, JOPI habla con **Gemini TTS** (`api/voz.py`, misma `GEMINI_API_KEY`). Si falla, usa la voz del navegador.
+Variables opcionales: `JOPI_VOZ` (voz prediseñada, por defecto `Leda`, o el ID `voice_...` de una voz creada con *Voice design* en AI Studio),
+`JOPI_ESTILO` (cómo habla) y `TTS_MODELO` (por defecto `gemini-3.8-flash-lite-tts`).
+
 ### Publicar en Vercel
 
 1. En [vercel.com](https://vercel.com), **Add New → Project** e importar este repo de GitHub. Framework: *Other*.

@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 from api.chat import handler as ChatHandler  # noqa: E402
+from api.voz import handler as VozHandler  # noqa: E402
 
 PUBLIC = str(Path(__file__).parent / "public")
 
@@ -21,6 +22,8 @@ class Local(ChatHandler, SimpleHTTPRequestHandler):
     def do_POST(self):
         if self.path.startswith("/api/chat"):
             return ChatHandler.do_POST(self)
+        if self.path.startswith("/api/voz"):
+            return VozHandler.do_POST(self)
         self.send_error(404)
 
 

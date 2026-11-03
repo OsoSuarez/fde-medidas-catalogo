@@ -242,18 +242,32 @@ function elegirVoz() {
   const voces = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
   return voces.filter(v => puntaje(v) >= 0).sort((a, b) => puntaje(b) - puntaje(a))[0] || null;
 }
-function hablar(texto) {
-  if (!vozOn || !window.speechSynthesis) return;
+// Primero intenta la voz propia de JOPI (Gemini TTS en /api/voz); si falla, usa la voz del navegador.
+let audioActual = null;
+function hablarNavegador(texto) {
+  if (!window.speechSynthesis) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(texto.replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/gu, ""));
   const v = elegirVoz(); if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = "es-AR"; }
-  u.pitch = 1.08;   // tono de mujer joven, natural (sin efecto "dibujito")
-  u.rate = 1.07;    // un toque rápida: energía rioplatense
+  u.pitch = 1.08; u.rate = 1.07;
   speechSynthesis.speak(u);
+}
+async function hablar(texto) {
+  if (!vozOn) return;
+  if (audioActual) { audioActual.pause(); audioActual = null; }
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  try {
+    const r = await fetch("/api/voz", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({texto})});
+    if (!r.ok || !(r.headers.get("Content-Type") || "").includes("audio")) throw new Error("sin audio");
+    const url = URL.createObjectURL(await r.blob());
+    audioActual = new Audio(url);
+    audioActual.onended = () => URL.revokeObjectURL(url);
+    await audioActual.play();
+  } catch (e) { hablarNavegador(texto); }
 }
 function pintarVoz() { $("voz").textContent = vozOn ? "🔊" : "🔈"; $("voz").setAttribute("aria-pressed", vozOn); }
 $("voz").onclick = () => { vozOn = !vozOn; try { localStorage.setItem("jopi_voz", vozOn ? "1" : "0"); } catch (e) {}
-  pintarVoz(); if (vozOn) hablar("¡Hola! ¿Me escuchás? Soy JOPI, tu compañera de Retail. Dale, preguntame lo que quieras."); else if (window.speechSynthesis) speechSynthesis.cancel(); };
+  pintarVoz(); if (vozOn) hablar("¡Hola! ¿Me escuchás? Soy JOPI, tu compañera de Retail. Dale, preguntame lo que quieras."); else { if (audioActual) audioActual.pause(); if (window.speechSynthesis) speechSynthesis.cancel(); } };
 if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => {};
 pintarVoz();
 

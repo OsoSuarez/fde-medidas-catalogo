@@ -3,6 +3,9 @@
     "api/chat.py": {
       "includeFiles": "{src/**,prompts/**,data/procedimientos/**}",
       "maxDuration": 30
+    },
+    "api/voz.py": {
+      "maxDuration": 30
     }
   }
 }
